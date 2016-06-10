@@ -1,0 +1,46 @@
+Option Explicit
+
+Private Const EXCELTOOL As String = "EXCEL TOOL"
+
+Sub Menu_Add()
+
+    If chkCommandBar = True Then
+       Menu_Del
+    End If
+    With Application.CommandBars("Worksheet Menu Bar")
+         .Visible = True
+         With .Controls.Add(msoControlPopup)
+          .Caption = "Excel Diff"
+          .OnAction = "excel_diff"
+         End With
+    End With
+    
+End Sub
+
+Sub Menu_Del()
+    Dim tmpCBar As CommandBar
+    Dim tmpCMenu As CommandBarControl
+    
+    Set tmpCBar = Application.CommandBars("Worksheet Menu Bar")
+    For Each tmpCMenu In tmpCBar.Controls
+        If tmpCMenu.Caption = EXCELTOOL Then
+           tmpCMenu.Delete
+        End If
+    Next
+End Sub
+         
+Private Function chkCommandBar() As Boolean
+    Dim tmpCBar As CommandBar
+    Dim tmpCMenu As CommandBarControl
+    
+    chkCommandBar = False
+    
+    Set tmpCBar = Application.CommandBars("Worksheet Menu Bar")
+    For Each tmpCMenu In tmpCBar.Controls
+        If tmpCMenu.Caption = EXCELTOOL Then
+           chkCommandBar = True
+           Exit For
+        End If
+    Next
+End Function
+
