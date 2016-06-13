@@ -1,0 +1,22 @@
+Private Sub CommandButton1_Click()
+    excel_diff.OldFileName = Application.GetOpenFilename("Microsoft Excel book,*.xls?")
+    Label1.Caption = excel_diff.OldFileName
+    
+End Sub
+
+Private Sub CommandButton2_Click()
+    excel_diff.NewFileName = Application.GetOpenFilename("Microsoft Excel book,*.xls?")
+    Label1.Caption = excel_diff.NewFileName
+End Sub
+
+Private Sub CommandButton3_Click()
+  If excel_diff.OldFileName = "False" Or excel_diff.OldFileName = "" Then
+     GoTo EXITRUN
+  End If
+  If excel_diff.NewFileName = "False" Or excel_diff.NewFileName = "" Then
+     GoTo EXITRUN
+  End If
+  excel_diff.excel_diff
+  UserForm1.Hide
+  
+End Sub
