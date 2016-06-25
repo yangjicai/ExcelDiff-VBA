@@ -1,0 +1,188 @@
+Public OldFileName As String
+Public NewFileName As String
+Public oldbook As Workbook
+Public newbook As Workbook
+Public diffbook As Workbook
+
+
+Sub Excel_Diff()
+    Application.ScreenUpdating = False
+    UserForm1.Show
+End Sub
+
+Sub exceldiff()
+
+If OldFileName <> "False" Then
+   Set diffbook = Workbooks.Open(OldFileName)
+   diffbook.SaveAs "DIFF_" & diffbook.Name
+   Set oldbook = Workbooks.Open(OldFileName)
+End If
+
+If NewFileName <> "False" Then
+   Set newbook = Workbooks.Open(NewFileName)
+End If
+
+On Error Resume Next
+Dim sht As Worksheet
+
+For Each sht In oldbook.Worksheets
+           Debug.Print sht.Name
+    If Not IsNull(newbook.Worksheets(sht.Name)) Then
+       sheet_diff sht, newbook.Worksheets(sht.Name), diffbook.Worksheets(sht.Name)
+       Debug.Print sht.Name
+    End If
+Next
+
+oldbook.Close False
+newbook.Close False
+
+MsgBox "Finish!"
+diffbook.Activate
+
+End Sub
+
+'diff sheet
+Function sheet_diff(ByRef oldsheet As Worksheet, ByRef newsheet As Worksheet, ByRef diffsheet As Worksheet)
+
+Dim M, N As Integer
+Dim maxc1, maxc2, maxc As Integer
+
+M = 1
+N = 1
+
+M = oldsheet.UsedRange.Find("*", , xlFormulas, , xlByRows, xlPrevious).Row + 1
+N = newsheet.UsedRange.Find("*", , xlFormulas, , xlByRows, xlPrevious).Row + 1
+
+maxc1 = oldsheet.UsedRange.Find("*", , xlFormulas, , xlByColumns, xlPrevious).Column
+maxc2 = newsheet.UsedRange.Find("*", , xlFormulas, , xlByColumns, xlPrevious).Column
+
+maxc = Application.WorksheetFunction.Max(maxc1, maxc2)
+
+
+newsheet.Range(newsheet.Cells(1, 1), newsheet.Cells(N, maxc)).Copy diffsheet.Cells(1, maxc + 2)
+
+
+
+Dim opt() As Integer
+ReDim opt(M + 1, N + 1)
+
+For i = M To 1 Step -1
+ For j = N To 1 Step -1
+    If diff_row_cells(oldsheet, i, newsheet, j, maxc) Then
+       opt(i, j) = opt(i + 1, j + 1) + 1
+    Else
+       opt(i, j) = Application.WorksheetFunction.Max(opt(i + 1, j), opt(i, j + 1))
+    End If
+ Next
+Next
+
+'recover LCS itself and print it
+i = 1
+j = 1
+
+Dim counter1, counter2 As Integer
+Dim counter As Integer
+
+counter1 = 0
+counter2 = 0
+
+While i <= M And j <= N
+    If diff_row_cells(oldsheet, i, newsheet, j, maxc) Then
+       i = i + 1
+       j = j + 1
+       
+       If counter1 > 0 And counter2 > 0 Then
+          For counter = counter1 To 1 Step -1
+              diffsheet.Cells(i - counter - 1, maxc + 1).Value = "DIFF"
+          Next
+          For counter = counter2 To 1 Step -1
+              diffsheet.Cells(j - counter - 1, maxc + 1 + maxc + 1).Value = "DIFF"
+          Next
+       ElseIf counter1 > 0 Then
+          For counter = counter1 To 1 Step -1
+              diffsheet.Cells(i - counter - 1, maxc + 1).Value = "OLD"
+          Next
+       ElseIf counter2 > 0 Then
+          For counter = counter2 To 1 Step -1
+              diffsheet.Cells(j - counter - 1, maxc + 1 + maxc + 1).Value = "NEW"
+          Next
+       End If
+       
+       counter1 = 0
+       counter2 = 0
+    ElseIf opt(i + 1, j) >= opt(i, j + 1) Then
+       counter1 = counter1 + 1
+       i = i + 1
+    Else
+       counter2 = counter2 + 1
+       j = j + 1
+    End If
+    
+Wend
+
+'to be gook look
+
+
+Dim MN, rn As Integer
+
+'MN = Application.WorksheetFunction.Max(M, N)
+MN = M + N
+diffsheet.Columns(maxc + 1).Interior.ColorIndex = 24
+
+For rn = 1 To MN
+With diffsheet
+'when old , right 1 row down
+  If .Cells(rn, maxc + 1).Value = "OLD" Then
+     .Cells(rn, maxc + 1).Value = "DEL"
+     .Cells(rn, maxc + 1).Interior.ColorIndex = 3
+     .Range(.Cells(rn, maxc + 2), .Cells(rn, maxc + maxc + 2)).Insert shift:=xlDown, CopyOrigin:=xlFormatFormLeftOrAbove
+     
+  ElseIf .Cells(rn, maxc + maxc + 2).Value = "NEW" Then
+     .Range(.Cells(rn, 1), .Cells(rn, maxc + 1)).Insert shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+     .Cells(rn, maxc + 1).Value = "INS"
+     .Cells(rn, maxc + 1).Interior.ColorIndex = 25
+     
+  ElseIf .Cells(rn, maxc + maxc + 2).Value = "DIFF" And .Cells(rn, maxc + 1).Value <> "DIFF" Then
+     .Range(.Cells(rn, 1), .Cells(rn, maxc + 1)).Insert shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+     .Cells(rn, maxc + 1).Value = "MOD"
+     .Cells(rn, maxc + 1).Interior.ColorIndex = 4
+     
+  ElseIf .Cells(rn, maxc + maxc + 2).Value <> "DIFF" And .Cells(rn, maxc + 1).Value = "DIFF" Then
+     .Cells(rn, maxc + 1).Value = "MOD"
+     .Cells(rn, maxc + 1).Interior.ColorIndex = 4
+     .Range(.Cells(rn, maxc + 2), .Cells(rn, maxc + maxc + 2)).Insert shift:=xlDown, CopyOrigin:=xlFormatFormLeftOrAbove
+       
+  ElseIf .Cells(rn, maxc + maxc + 2).Value = "DIFF" And .Cells(rn, maxc + 1).Value = "DIFF" Then
+     .Cells(rn, maxc + 1).Value = "MOD"
+     .Cells(rn, maxc + 1).Interior.ColorIndex = 4
+  End If
+  
+End With
+Next
+
+'diffsheet.Columns(maxc + maxc + 2).Clear
+MN = diffsheet.UsedRange.Find("*", , xlFormulas, , xlByRows, xlPrevious).Row + 1
+diffsheet.PageSetup.Zoom = False
+diffsheet.PageSetup.FitToPagesTall = False
+
+End Function
+
+
+Function diff_row_cells(ByRef s1 As Worksheet, ByVal rownumber1 As Integer, ByRef s2 As Worksheet, ByVal rownumber2 As Integer, ByVal maxc As Integer) As Boolean
+diff_row_cells = True
+For i = 1 To maxc
+    If s1.Cells(rownumber1, i).Value <> s2.Cells(rownumber2, i).Value Then
+       diff_row_cells = False
+       Exit Function
+    End If
+Next
+End Function
+
+
+
+
+
+
+
+
+
